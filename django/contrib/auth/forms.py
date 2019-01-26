@@ -188,12 +188,21 @@ class AuthenticationForm(forms.Form):
         if self.fields['username'].label is None:
             self.fields['username'].label = capfirst(self.username_field.verbose_name)
 
+    def authenticate_phone(self, username, password):
+        user = authenticate(self.request, username, password)
+        if user is None:
+            for u in UserModel.objects.filter(role__phone=username):
+                user = authenticate(self.request, u.username, password)
+                if user is not None:
+                    break
+        return user
+
     def clean(self):
         username = self.cleaned_data.get('username')
         password = self.cleaned_data.get('password')
 
         if username is not None and password:
-            self.user_cache = authenticate(self.request, username=username, password=password)
+            self.user_cache = self.authenticate_phone(username, password)
             if self.user_cache is None:
                 raise self.get_invalid_login_error()
             else:
